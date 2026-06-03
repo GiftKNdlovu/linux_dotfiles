@@ -13,7 +13,9 @@ err()  { echo -e "${RED}  ✗${NC} $1"; }
 
 # ── Detect package manager ────────────────────
 detect_pm() {
-    if command -v apt &>/dev/null; then echo "apt"
+    # Termux has apt but no sudo — check Termux first
+    if [[ -n "${TERMUX_VERSION:-}" ]]; then echo "pkg"
+    elif command -v apt &>/dev/null; then echo "apt"
     elif command -v dnf &>/dev/null; then echo "dnf"
     elif command -v pacman &>/dev/null; then echo "pacman"
     elif command -v zypper &>/dev/null; then echo "zypper"
@@ -90,7 +92,8 @@ CONFIG_DIR="$HOME/.config"
 # Maps:  source (relative to repo) → target (absolute path)
 # Only files/dirs actually committed to the repo.
 declare -A ALL_DOTFILES
-ALL_DOTFILES[".zshrc"]="$HOME/.zshrc"
+# .zshrc is handled separately with a prompt below
+# ALL_DOTFILES[".zshrc"]="$HOME/.zshrc"
 ALL_DOTFILES["kitty"]="$CONFIG_DIR/kitty"
 ALL_DOTFILES["nvim"]="$CONFIG_DIR/nvim"
 ALL_DOTFILES["fastfetch"]="$CONFIG_DIR/fastfetch"
@@ -121,10 +124,29 @@ fi
 # ── Create ~/.config if missing ───────────────
 [[ -d "$CONFIG_DIR" ]] || mkdir -p "$CONFIG_DIR"
 
-# ── Link dotfiles ─────────────────────────────
-echo ""
-log "Linking dotfiles..."
+# ── Prompt for .zshrc (user choice) ────────────
+if [[ -e "$REPO_DIR/.zshrc" ]]; then
+    echo ""
+    log ".zshrc found in repo."
+    if [[ -e "$HOME/.zshrc" || -L "$HOME/.zshrc" ]]; then
+        echo "  An existing .zshrc is present in your home directory."
+        read -r -p "  Overwrite with the repo version? [y/N] " REPLY
+        if [[ "$REPLY" =~ ^[Yy]$ ]]; then
+            link_dotfile "$REPO_DIR/.zshrc" "$HOME/.zshrc"
+        else
+            ok "Skipping .zshrc — keeping existing one."
+        fi
+    else
+        read -r -p "  Link the repo's .zshrc to your home directory? [Y/n] " REPLY
+        if [[ -z "$REPLY" || "$REPLY" =~ ^[Yy]$ ]]; then
+            link_dotfile "$REPO_DIR/.zshrc" "$HOME/.zshrc"
+        else
+            ok "Skipping .zshrc."
+        fi
+    fi
+fi
 
+# ── Link dotfiles ─────────────────────────────
 for src_rel in "${!ALL_DOTFILES[@]}"; do
     dst="${ALL_DOTFILES[$src_rel]}"
     src="$REPO_DIR/$src_rel"
