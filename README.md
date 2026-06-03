@@ -1,10 +1,8 @@
 # linux_dotfiles
 
-My personal dotfiles for both TUI (terminal/server) and GUI environments.
+Personal dotfiles for Linux — TUI (server) or GUI (desktop), picked at install time.
 
-## Quick Install
-
-Clone this repository directly into your `~/.config` directory, and run the installation script:
+## Use
 
 ```bash
 git clone https://github.com/GiftKNdlovu/linux_dotfiles.git ~/.config
@@ -12,15 +10,21 @@ cd ~/.config
 ./install_dotfiles.sh
 ```
 
-## How It Works
+A menu asks **tui** or **gui**. The script detects your package manager (`apt`, `dnf`, `pacman`, `zypper`, or Termux's `pkg`) and handles the rest.
 
-The script detects your Linux package manager (`apt`, `dnf`, `pacman`, `zypper`, or Termux `pkg`) and prompts you to select either a **TUI** or **GUI** setup:
+## What goes where
 
-### 1. Server / TUI
-- **Installs:** `zsh`, `btop`, `fastfetch`
-- **Configures:** `nvim`, `fastfetch`, `.zshrc` (symlinked)
-- **Cleans up:** Removes graphical configuration files (`i3`, `keyd`, `kitty`, `picom`, `polybar`, `rofi`) to keep the server clutter-free.
+### TUI (terminal/server)
+- **Installs:** zsh, btop, fastfetch
+- **Links:** `.zshrc`, `nvim/`, `fastfetch/`
+- **Cleans up:** Removes any leftover GUI configs (i3, kitty, picom, polybar, rofi, keyd)
 
-### 2. Desktop / GUI
-- **Installs:** TUI packages + `kitty`, `i3`, `keyd`, `picom`, `polybar`, `rofi`
-- **Configures:** All dotfiles (TUI + graphical) symlinked into place.
+### GUI (desktop)
+- **Installs:** everything above + kitty, i3, picom, polybar, rofi
+- **Links:** all dotfiles including GUI ones
+
+## Notes
+
+- Existing configs get backed up with a `.bak` suffix before being replaced.
+- Only installs packages that aren't already on the system.
+- Run from the repo root — the script figures out its own location.
