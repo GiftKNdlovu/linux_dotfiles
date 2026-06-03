@@ -39,14 +39,21 @@ install_pkgs() {
     [[ ${#missing[@]} -eq 0 ]] && return 0
 
     log "Installing: ${missing[*]}"
+    local failed=false
     case "$PM" in
-        apt)    sudo apt update && sudo apt install -y "${missing[@]}" ;;
-        dnf)    sudo dnf install -y "${missing[@]}" ;;
-        pacman) sudo pacman -Sy --noconfirm "${missing[@]}" ;;
-        zypper) sudo zypper install -y "${missing[@]}" ;;
-        pkg)    pkg update && pkg install -y "${missing[@]}" ;;
+        apt)    sudo apt update || warn "apt update failed — continuing"
+                sudo apt install -y "${missing[@]}" || failed=true ;;
+        dnf)    sudo dnf install -y "${missing[@]}" || failed=true ;;
+        pacman) sudo pacman -Sy --noconfirm "${missing[@]}" || failed=true ;;
+        zypper) sudo zypper install -y "${missing[@]}" || failed=true ;;
+        pkg)    pkg update || warn "pkg update failed — continuing"
+                pkg install -y "${missing[@]}" || failed=true ;;
     esac
-    ok "Installation complete."
+    if $failed; then
+        warn "Some packages failed to install — continuing anyway"
+    else
+        ok "Installation complete."
+    fi
 }
 
 # ── Symlink a dotfile ─────────────────────────
@@ -98,18 +105,18 @@ ALL_DOTFILES["kitty"]="$CONFIG_DIR/kitty"
 ALL_DOTFILES["nvim"]="$CONFIG_DIR/nvim"
 ALL_DOTFILES["fastfetch"]="$CONFIG_DIR/fastfetch"
 ALL_DOTFILES["i3"]="$CONFIG_DIR/i3"
-ALL_DOTFILES["keyd"]="$CONFIG_DIR/keyd"
+# keyd is handled separately with a prompt below (config goes to /etc/keyd/)
 ALL_DOTFILES["picom"]="$CONFIG_DIR/picom"
 ALL_DOTFILES["polybar"]="$CONFIG_DIR/polybar"
 ALL_DOTFILES["rofi"]="$CONFIG_DIR/rofi"
 
 # GUI-only dotfiles — these get skipped on TUI
-GUI_ONLY=("i3" "keyd" "kitty" "picom" "polybar" "rofi")
+GUI_ONLY=("i3" "kitty" "picom" "polybar" "rofi")
 
 # TUI apps that get installed regardless
-TUI_APPS=("zsh" "btop" "fastfetch")
+TUI_APPS=("zsh" "fastfetch")
 
-# Extra GUI apps
+# Extra GUI apps (keyd is not available in repos, config handled separately)
 GUI_APPS=("kitty" "picom" "polybar" "rofi" "i3")
 
 # ── Install packages ──────────────────────────
@@ -123,6 +130,25 @@ fi
 
 # ── Create ~/.config if missing ───────────────
 [[ -d "$CONFIG_DIR" ]] || mkdir -p "$CONFIG_DIR"
+
+# ── Prompt for keyd config (both TUI and GUI) ──
+if [[ -d "$REPO_DIR/keyd" ]]; then
+    echo ""
+    log "keyd config found in repo."
+    echo "  keyd is a keyboard daemon — its config lives at /etc/keyd/default.conf"
+    read -r -p "  Install keyd config to /etc/keyd/default.conf? (requires sudo) [y/N] " REPLY
+    if [[ "$REPLY" =~ ^[Yy]$ ]]; then
+        if [[ ! -d "/etc/keyd" ]]; then
+            sudo mkdir -p /etc/keyd
+        fi
+        sudo cp "$REPO_DIR/keyd/default.conf" /etc/keyd/default.conf 2>/dev/null || \
+        sudo cp "$REPO_DIR/keyd"/*.conf /etc/keyd/ 2>/dev/null || \
+        warn "Could not copy keyd config — check the repo structure"
+        ok "keyd config installed to /etc/keyd/"
+    else
+        ok "Skipping keyd config."
+    fi
+fi
 
 # ── Prompt for .zshrc (user choice) ────────────
 if [[ -e "$REPO_DIR/.zshrc" ]]; then
